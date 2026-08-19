@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-2xl font-bold text-white">Monitoreo de Cortes Eléctricos</h1>
+    <p class="text-sm text-slate-400">Estado en tiempo real e historial de afectaciones del servicio en el municipio</p>
+</div>
+
+<!-- Tarjetas de Estadísticas -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div class="bg-rose-950/40 border border-rose-500/30 p-5 rounded-xl shadow-sm">
+        <div class="text-xs font-semibold uppercase tracking-wider text-rose-400">Cortes Activos</div>
+        <div class="text-3xl font-extrabold text-rose-200 mt-2">{{ cortes_activos|length }}</div>
+    </div>
+    <div class="bg-slate-800 border border-slate-700 p-5 rounded-xl shadow-sm">
+        <div class="text-xs font-semibold uppercase tracking-wider text-blue-400">Total Comunas</div>
+        <div class="text-3xl font-extrabold text-slate-100 mt-2">{{ total_comunas }}</div>
+    </div>
+    <div class="bg-slate-800 border border-slate-700 p-5 rounded-xl shadow-sm">
+        <div class="text-xs font-semibold uppercase tracking-wider text-emerald-400">Total Comunidades</div>
+        <div class="text-3xl font-extrabold text-slate-100 mt-2">{{ total_comunidades }}</div>
+    </div>
+</div>
+
+<!-- Tabla de Monitoreo con Filtros por Pestaña, Fecha y Paginación -->
+<div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden shadow-sm">
+    <div class="px-6 py-4 border-b border-slate-700 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div class="font-semibold text-white flex items-center gap-3">
+            <span>Historial de Afectaciones</span>
+            <!-- Filtro de Fecha -->
+            <div class="flex items-center gap-2">
+                <input type="date" id="filtro-fecha" onchange="actualizarTabla()" 
+                       class="bg-slate-900 border border-slate-700 text-xs text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-slate-500">
+                <button type="button" onclick="limpiarFecha()" id="btn-limpiar-fecha" class="hidden text-xs text-slate-400 hover:text-white transition">
+                    Limpiar
+                </button>
+            </div>
+        </div>
+        
+        <!-- Pestañas de Filtro Rápido -->
+        <div class="flex bg-slate-900 p-1 rounded-lg border border-slate-700/60 text-xs font-medium">
+            <button type="button" onclick="cambiarEstado('TODOS')" id="tab-todos" class="px-3 py-1.5 rounded-md text-slate-200 bg-slate-700 shadow-sm transition">
+                Todos
+            </button>
+            <button type="button" onclick="cambiarEstado('EN_CORTE')" id="tab-corte" class="px-3 py-1.5 rounded-md text-slate-400 hover:text-white transition">
+                Sin Energía ({{ cortes_activos|length }})
+            </button>
+            <button type="button" onclick="cambiarEstado('RESTABLECIDO')" id="tab-restablecido" class="px-3 py-1.5 rounded-md text-slate-400 hover:text-white transition">
+                Restablecidos
+            </button>
+        </div>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-slate-300">
+            <thead class="bg-slate-900/50 text-xs uppercase text-slate-400 border-b border-slate-700 tracking-wider">
+                <tr>
+                    <th class="px-6 py-3">Comuna</th>
+                    <th class="px-6 py-3">Comunidad</th>
+                    <th class="px-6 py-3">Circuito</th>
+                    <th class="px-6 py-3">Inicio</th>
+                    <th class="px-6 py-3">Fin</th>
+                    <th class="px-6 py-3">Duración</th>
+                    <th class="px-6 py-3">Estado</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-700" id="tabla-body">
+                {% for corte in ultimos_cortes %}
+                <tr class="hover:bg-slate-700/30 transition fila-corte" 
+                    data-estado="{{ corte.estado }}" 
+                    data-fecha="{{ corte.fecha_inicio }}">
+                    <!-- Comuna -->
+                    <td class="px-6 py-4 text-slate-300">
+                        {{ corte.comunidad.comuna.nombre if corte.comunidad and corte.comunidad.comuna else 'N/A' }}
+                    </td>
+                    
+                    <!-- Comunidad -->
+                    <td class="px-6 py-4 font-semibold text-white whitespace-nowrap">
+                        {{ corte.comunidad.nombre if corte.comunidad else 'N/A' }}
+                    </td>
+                    
+                    <!-- Circuito -->
+                    <td class="px-6 py-4 text-slate-300">
+                        {{ corte.circuito.nombre if corte.circuito else 'N/A' }}
+                    </td>
+                    
+                    <!-- Fecha / Hora Inicio -->
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        {{ corte.fecha_inicio }} <span class="text-xs text-slate-400">({{ corte.hora_inicio.strftime('%H:%M') if corte.hora_inicio else '--:--' }})</span>
+                    </td>
+                    
+                    <!-- Fecha / Hora Fin -->
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        {% if corte.fecha_fin %}
+                            {{ corte.fecha_fin }} <span class="text-xs text-slate-400">({{ corte.hora_fin.strftime('%H:%M') if corte.hora_fin else '--:--' }})</span>
+                        {% else %}
+                            <span class="text-slate-500">—</span>
+                        {% endif %}
+                    </td>
+                    
+                    <!-- Duración del Corte -->
+                    <td class="px-6 py-4 whitespace-nowrap font-medium">
+                        {% if corte.estado == 'RESTABLECIDO' %}
+                            <span class="text-emerald-400 font-semibold">{{ corte.duracion_minutos or 0 }} min</span>
+                        {% else %}
+                            <span class="text-amber-400 animate-pulse font-semibold">En curso</span>
+                        {% endif %}
+                    </td>
+                    
+                    <!-- Badge Estado -->
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        {% if corte.estado == 'EN_CORTE' %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                                SIN ENERGÍA
+                            </span>
+                        {% else %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                RESTABLECIDO
+                            </span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr id="sin-registros">
+                    <td colspan="7" class="px-6 py-8 text-center text-slate-500">
+                        No hay reportes de cortes registrados en este momento.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Barra de Paginación -->
+    <div class="px-6 py-3 border-t border-slate-700 flex items-center justify-between text-xs text-slate-400 bg-slate-900/30">
+        <div>
+            Mostrando <span id="info-inicio" class="font-semibold text-slate-200">0</span> - 
+            <span id="info-fin" class="font-semibold text-slate-200">0</span> de 
+            <span id="info-total" class="font-semibold text-slate-200">0</span> registros
+        </div>
+        <div class="flex items-center gap-2">
+            <button type="button" id="btn-prev" onclick="cambiarPagina(-1)" 
+                    class="px-3 py-1.5 rounded border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition">
+                Anterior
+            </button>
+            <span id="info-pagina" class="px-2 font-medium text-slate-300">Pág. 1</span>
+            <button type="button" id="btn-next" onclick="cambiarPagina(1)" 
+                    class="px-3 py-1.5 rounded border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition">
+                Siguiente
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+let estadoActual = 'TODOS';
+let paginaActual = 1;
+const registrosPorPagina = 10; // Cambia este número si deseas mostrar más o menos filas por página
+
+function cambiarEstado(nuevoEstado) {
+    estadoActual = nuevoEstado;
+    paginaActual = 1;
+    
+    // Configuración visual de pestañas
+    const tabs = {
+        'TODOS': document.getElementById('tab-todos'),
+        'EN_CORTE': document.getElementById('tab-corte'),
+        'RESTABLECIDO': document.getElementById('tab-restablecido')
+    };
+
+    Object.keys(tabs).forEach(key => {
+        if (tabs[key]) {
+            if (key === estadoActual) {
+                tabs[key].className = "px-3 py-1.5 rounded-md text-slate-200 bg-slate-700 shadow-sm transition";
+            } else {
+                tabs[key].className = "px-3 py-1.5 rounded-md text-slate-400 hover:text-white transition";
+            }
+        }
+    });
+
+    actualizarTabla();
+}
+
+function limpiarFecha() {
+    document.getElementById('filtro-fecha').value = '';
+    actualizarTabla();
+}
+
+function cambiarPagina(delta) {
+    paginaActual += delta;
+    actualizarTabla();
+}
+
+function actualizarTabla() {
+    const fechaFiltro = document.getElementById('filtro-fecha').value;
+    const btnLimpiar = document.getElementById('btn-limpiar-fecha');
+    btnLimpiar.classList.toggle('hidden', !fechaFiltro);
+
+    const todasLasFilas = Array.from(document.querySelectorAll('.fila-corte'));
+    
+    // 1. Filtrar registros por Estado y Fecha
+    const filasFiltradas = todasLasFilas.filter(fila => {
+        const estadoFila = fila.getAttribute('data-estado');
+        const fechaFila = fila.getAttribute('data-fecha');
+
+        const coincideEstado = (estadoActual === 'TODOS' || estadoFila === estadoActual);
+        const coincideFecha = (!fechaFiltro || fechaFila === fechaFiltro);
+
+        return coincideEstado && coincideFecha;
+    });
+
+    // 2. Calcular límites de paginación
+    const totalRegistros = filasFiltradas.length;
+    const totalPaginas = Math.ceil(totalRegistros / registrosPorPagina) || 1;
+
+    if (paginaActual < 1) paginaActual = 1;
+    if (paginaActual > totalPaginas) paginaActual = totalPaginas;
+
+    const inicio = (paginaActual - 1) * registrosPorPagina;
+    const fin = inicio + registrosPorPagina;
+
+    // 3. Ocultar todas las filas y mostrar solo las de la página activa
+    todasLasFilas.forEach(fila => fila.style.display = 'none');
+    
+    filasFiltradas.slice(inicio, fin).forEach(fila => {
+        fila.style.display = '';
+    });
+
+    // 4. Actualizar textos de la barra de paginación
+    document.getElementById('info-inicio').innerText = totalRegistros > 0 ? inicio + 1 : 0;
+    document.getElementById('info-fin').innerText = Math.min(fin, totalRegistros);
+    document.getElementById('info-total').innerText = totalRegistros;
+    document.getElementById('info-pagina').innerText = `Pág. ${paginaActual} de ${totalPaginas}`;
+
+    // Deshabilitar/Habilitar botones
+    document.getElementById('btn-prev').disabled = (paginaActual === 1);
+    document.getElementById('btn-next').disabled = (paginaActual >= totalPaginas || totalRegistros === 0);
+}
+
+// Inicializar la tabla al cargar la página
+document.addEventListener('DOMContentLoaded', () => {
+    actualizarTabla();
+});
+</script>
+{% endblock %}

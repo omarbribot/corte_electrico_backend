@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-slate-900">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alcaldía de Sucre - Control de Cortes Eléctricos</title>
+    <!-- Tailwind CSS desde CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="h-full flex flex-col text-slate-100">
+    <!-- Navbar -->
+    <nav class="bg-slate-800 border-b border-slate-700 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-blue-600 rounded-lg text-white font-bold">⚡</div>
+                    <a href="/" class="font-bold text-lg text-white tracking-wide">Alcaldía de Sucre <span class="text-xs px-2 py-1 bg-blue-500/20 text-blue-400 rounded-full font-normal">Servicios Públicos</span></a>
+                </div>
+                <div class="flex space-x-4">
+                    <a href="/" class="px-3 py-2 rounded-md text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-700 transition">Panel Cortes</a>
+                    <a href="/matriz" class="px-3 py-2 rounded-md text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-700 transition">Matriz Relaciones</a>
+                    <a href="/jefes" class="px-3 py-2 rounded-md text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-700 transition">Jefes de Comunidad</a>
+                    <div class="h-5 w-px bg-slate-700 mx-2"></div>
+    
+                    <span class="text-xs text-slate-400 font-medium">👤 {{ current_user.nombre_apellido }}</span>
+                    <a href="/logout" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/30 hover:bg-rose-500/30 transition">
+                        Salir
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="mb-6 p-4 rounded-lg bg-blue-900/50 border border-blue-500/30 text-blue-200 text-sm flex items-center justify-between">
+                <span>{{ message }}</span>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-800/50 border-t border-slate-800 py-4 text-center text-xs text-slate-500">
+        Gestión de Servicios Públicos - Municipio Sucre © 2026
+    </footer>
+</body>
+</html>

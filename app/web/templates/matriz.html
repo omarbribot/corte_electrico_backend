@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div>
+        <h1 class="text-2xl font-bold text-white">Matriz de Relaciones Territoriales</h1>
+        <p class="text-sm text-slate-400">Reasigna la SubEstación, el circuito eléctrico o la comuna correspondiente a cada comunidad</p>
+    </div>
+</div>
+
+<div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden shadow-lg">
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-slate-300">
+            <thead class="bg-slate-900/80 text-xs uppercase text-slate-400 border-b border-slate-700 tracking-wider">
+                <tr>
+                    <th class="px-6 py-4">Comunidad</th>
+                    <th class="px-6 py-4">Comuna Actual</th>
+                    <th class="px-6 py-4">Sub Estación</th>
+                    <th class="px-6 py-4">Circuito Eléctrico Actual</th>
+                    <th class="px-6 py-4 text-center">Acción</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-700/60">
+                {% for c in comunidades %}
+                <tr class="hover:bg-slate-700/20 transition">
+                    <form method="POST" action="/matriz">
+                        <input type="hidden" name="comunidad_id" value="{{ c.id }}">
+                        
+                        <!-- Nombre Comunidad -->
+                        <td class="px-6 py-3 font-semibold text-white whitespace-nowrap">
+                            {{ c.nombre }}
+                        </td>
+                        
+                        <!-- Select Comuna -->
+                        <td class="px-6 py-3">
+                            <select name="comuna_id" class="w-full bg-slate-900 border border-slate-600 text-slate-100 text-xs rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                                {% for com in comunas %}
+                                <option value="{{ com.id }}" {% if com.id == c.comuna_id %}selected{% endif %}>
+                                    {{ com.nombre }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                        
+                        <!-- Select SubEstacion -->
+                        <td class="px-6 py-3">
+                            <select id="sub_estacion_{{ c.id }}" class="w-full bg-slate-900 border border-slate-600 text-slate-100 text-xs rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" onchange="filtrarCircuitos('{{ c.id }}')">
+                                {% for sub in sub_estaciones %}
+                                <option value="{{ sub.id }}" {% if sub.id == c.circuito.sub_estacion_id %}selected{% endif %}>
+                                    {{ sub.nombre }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                        
+                        <!-- Select Circuito -->
+                        <td class="px-6 py-3">
+                            <select name="circuito_id" id="circuito_{{ c.id }}" class="w-full bg-slate-900 border border-slate-600 text-slate-100 text-xs rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                                {% for cir in circuitos %}
+                                <option value="{{ cir.id }}" data-subid="{{ cir.sub_estacion_id }}" {% if cir.id == c.circuito_id %}selected{% endif %}>
+                                    {{ cir.nombre }} ({{ cir.sub_estacion.nombre }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                        
+                        <!-- Botón Guardar -->
+                        <td class="px-6 py-3 text-center whitespace-nowrap">
+                            <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs px-4 py-2 rounded-lg transition shadow-sm focus:ring-2 focus:ring-blue-400">
+                                Guardar
+                            </button>
+                        </td>
+                    </form>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function filtrarCircuitos(comunidadId, esCargaInicial = false) {
+    const subSelect = document.getElementById('sub_estacion_' + comunidadId);
+    const cirSelect = document.getElementById('circuito_' + comunidadId);
+    const selectedSubId = subSelect.value;
+    
+    // Guardar el valor que vino seleccionado de la base de datos
+    const valorOriginal = cirSelect.value;
+
+    let primerVisible = null;
+    let laSeleccionSigueVisible = false;
+
+    for (let option of cirSelect.options) {
+        const subId = option.getAttribute('data-subid');
+        if (subId === selectedSubId) {
+            option.style.display = 'block';
+            option.disabled = false;
+            if (!primerVisible) primerVisible = option;
+            if (option.value === valorOriginal) laSeleccionSigueVisible = true;
+        } else {
+            option.style.display = 'none';
+            option.disabled = true;
+        }
+    }
+
+    // Solo forzamos el primer visible si NO estamos en la carga inicial
+    // o si el circuito guardado no pertenece a la subestación elegida
+    if (!esCargaInicial && (!laSeleccionSigueVisible && primerVisible)) {
+        cirSelect.value = primerVisible.value;
+    }
+}
+
+// Filtro inicial al cargar respetando la data de Jinja2
+document.addEventListener("DOMContentLoaded", function() {
+    {% for c in comunidades %}
+    filtrarCircuitos('{{ c.id }}', true);
+    {% endfor %}
+});
+</script>
+{% endblock %}

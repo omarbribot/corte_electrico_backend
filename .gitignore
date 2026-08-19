@@ -1,0 +1,9 @@
+venv/
+env/
+.venv/
+instance/
+*.pyc
+__pycache__/
+.env
+*.xlsx
+corte_electrico.db
